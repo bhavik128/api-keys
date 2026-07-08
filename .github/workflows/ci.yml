@@ -23,7 +23,12 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run typecheck
+      # Better Auth is constructed at import time, so `next build` evaluates it.
+      # Throwaway build-only values; real secrets are injected at runtime.
       - run: bun run build
+        env:
+          BETTER_AUTH_SECRET: build-time-placeholder-not-a-real-secret-000
+          BETTER_AUTH_URL: http://localhost:3000
 
   image:
     needs: quality

@@ -8,7 +8,12 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN bun run build
+# Better Auth is constructed at import time, so `next build` evaluates it. Provide
+# throwaway build-only values to avoid its default-secret/base-URL errors. Real
+# secrets are injected at runtime (Coolify env) and read when the server starts.
+RUN BETTER_AUTH_SECRET="build-time-placeholder-not-a-real-secret-000" \
+    BETTER_AUTH_URL="http://localhost:3000" \
+    bun run build
 # Self-contained migration runner (bundles drizzle-orm + pg) run by the entrypoint.
 RUN bun build src/db/migrate.ts --target node --outfile migrate.mjs --external pg-native
 
