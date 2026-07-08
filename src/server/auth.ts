@@ -13,14 +13,9 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    minPasswordLength: 8,
     requireEmailVerification: false,
   },
   plugins: [nextCookies()],
-  session: {
-    expiresIn: 60 * 60 * 24 * 7,
-    updateAge: 60 * 60 * 24,
-  },
 });
 
 export type Session = typeof auth.$Infer.Session;
