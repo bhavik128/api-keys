@@ -9,7 +9,6 @@
     "fix": "ultracite fix",
     "format": "biome format --write",
     "lint": "biome check",
-    "prepare": "lefthook install",
     "start": "next start"
   },
   "dependencies": {
@@ -35,7 +34,7 @@
     "postcss": "8.5.16",
     "tailwindcss": "4.3.2",
     "typescript": "6.0.3",
-    "ultracite": "7.9.2"
+    "ultracite": "7.9.3"
   },
   "ignoreScripts": [
     "sharp",
