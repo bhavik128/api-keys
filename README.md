@@ -1,39 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# API Keys — authentication-as-a-service
 
-## Getting Started
+Drop one `/verify` call in front of any API and get hosted key issuance, custom scopes, rate-limit tiers, and instant revocation. Next.js (App Router, standalone) + Better Auth + Postgres/Drizzle + Redis, deployed to a self-hosted VPS via Coolify.
 
-First, run the development server:
+## Local development
+
+Requires [Bun](https://bun.sh) and Docker.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+cp .env.example .env.local        # fill in BETTER_AUTH_SECRET + API_KEY_PEPPER
+bun run db:up                     # start Postgres 18 + Redis 7.2 (docker compose)
+bun run db:migrate                # apply migrations
+bun run dev                       # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Generate local secrets:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+openssl rand -base64 32           # BETTER_AUTH_SECRET
+openssl rand -hex 32              # API_KEY_PEPPER
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Useful scripts: `db:up` / `db:down` (containers), `db:generate` (create migration SQL from the schema), `db:migrate` (apply), `db:studio` (Drizzle Studio), `auth:generate` (regenerate the Better Auth schema), `typecheck`, `check`/`fix` (lint).
 
 ## Deployment
 
-This app deploys to a self-hosted VPS via **Coolify**, driven by GitHub Actions.
+Deploys to a self-hosted VPS via **Coolify**, driven by GitHub Actions.
 
-**Pipeline** (`.github/workflows/ci.yml`): every push to `main` runs the quality gate (lint → typecheck → build), builds the Docker image and pushes it to **GHCR** tagged with the commit SHA (plus `latest`), then triggers a Coolify deploy webhook that pulls the new image and swaps the container with zero downtime. Pull requests run the gate and build the image **without** pushing.
+**Pipeline** (`.github/workflows/ci.yml`): every push to `main` runs the quality gate (lint → typecheck → build), builds the Docker image and pushes it to **GHCR** tagged with the commit SHA (plus `latest`), then triggers a Coolify deploy webhook that pulls the new image and swaps the container. Pull requests run the gate and build the image **without** pushing.
+
+**Migrations run at container startup.** The image bundles a self-contained `migrate.mjs` and the `drizzle/` SQL files; `docker-entrypoint.sh` applies pending migrations before starting the server, then `exec node server.js`. This is safe for a single replica — for multiple replicas, move migrations to a one-off pre-deploy job instead.
+
+### Runtime environment (Coolify env vars — never baked into the image)
+
+| Var | Value |
+| --- | --- |
+| `DATABASE_URL` | Coolify's **internal** Postgres URL |
+| `REDIS_URL` | Coolify's internal Redis URL |
+| `BETTER_AUTH_SECRET` | 32+ random bytes (unique to prod) |
+| `BETTER_AUTH_URL` | `https://keys.bhavik-vps.com` |
+| `API_KEY_PEPPER` | 32+ random bytes (unique to prod, never rotate without a re-hash plan) |
+| `APP_URL` | `https://keys.bhavik-vps.com` |
+| `NODE_ENV` | `production` |
+| `LOG_LEVEL` | `info` |
+
+Postgres and Redis are Coolify resources on the internal network (not publicly exposed). **Ports Exposes = 3000.** Liveness probe: `/api/health`; readiness (DB reachable): `/api/ready`.
+
+### Image & secrets
+
+The GHCR package `ghcr.io/bhavik128/api-keys` is **public**, so Coolify pulls it with no registry credentials (Coolify has no registry-credential UI for private images). This is safe because **all secrets are runtime-only** Coolify env vars — never in image layers, never `NEXT_PUBLIC_*`, never build args.
 
 ### Required GitHub Actions secrets
 
@@ -42,16 +57,16 @@ This app deploys to a self-hosted VPS via **Coolify**, driven by GitHub Actions.
 | `COOLIFY_WEBHOOK` | Coolify → the app's Webhooks page → Deploy Webhook URL |
 | `COOLIFY_TOKEN` | Coolify → Keys & Tokens → API token with Deploy permission |
 
-Pushing to GHCR uses the built-in `GITHUB_TOKEN` — no extra secret needed. The image is private, so Coolify pulls it using a GitHub PAT (`read:packages`) configured as a registry credential on the Docker Image resource.
-
 ### Rollback
 
-Every build is tagged `:sha-<short>`. To roll back, point the Coolify app's image tag at a previous `ghcr.io/<owner>/api-keys:sha-xxxxxxx` and redeploy.
+Every build is tagged `:sha-<short>`. To roll back, point the Coolify app's image tag at a previous `ghcr.io/bhavik128/api-keys:sha-xxxxxxx` and redeploy.
 
 ### Run the production image locally
 
 ```bash
 docker build -t api-keys:local .
-docker run --rm -p 3000:3000 api-keys:local
-curl localhost:3000/api/health   # {"status":"ok"}
+docker run --rm -p 3000:3000 \
+  -e DATABASE_URL=... -e REDIS_URL=... -e BETTER_AUTH_SECRET=... \
+  -e BETTER_AUTH_URL=http://localhost:3000 -e API_KEY_PEPPER=... \
+  api-keys:local
 ```
