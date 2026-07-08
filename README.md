@@ -29,8 +29,29 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This app deploys to a self-hosted VPS via **Coolify**, driven by GitHub Actions.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Pipeline** (`.github/workflows/ci.yml`): every push to `main` runs the quality gate (lint → typecheck → build), builds the Docker image and pushes it to **GHCR** tagged with the commit SHA (plus `latest`), then triggers a Coolify deploy webhook that pulls the new image and swaps the container with zero downtime. Pull requests run the gate and build the image **without** pushing.
+
+### Required GitHub Actions secrets
+
+| Secret | Where it comes from |
+| --- | --- |
+| `COOLIFY_WEBHOOK` | Coolify → the app's Webhooks page → Deploy Webhook URL |
+| `COOLIFY_TOKEN` | Coolify → Keys & Tokens → API token with Deploy permission |
+
+Pushing to GHCR uses the built-in `GITHUB_TOKEN` — no extra secret needed. The image is private, so Coolify pulls it using a GitHub PAT (`read:packages`) configured as a registry credential on the Docker Image resource.
+
+### Rollback
+
+Every build is tagged `:sha-<short>`. To roll back, point the Coolify app's image tag at a previous `ghcr.io/<owner>/api-keys:sha-xxxxxxx` and redeploy.
+
+### Run the production image locally
+
+```bash
+docker build -t api-keys:local .
+docker run --rm -p 3000:3000 api-keys:local
+curl localhost:3000/api/health   # {"status":"ok"}
+```
