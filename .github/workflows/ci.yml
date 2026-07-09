@@ -23,6 +23,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run typecheck
+      # Pure unit tests (crypto); pepper comes from the bunfig.toml preload, no DB
+      # needed. Add postgres/redis service containers when the /verify integration test lands.
+      - run: bun run test
       # Better Auth is constructed at import time, so `next build` evaluates it.
       # Throwaway build-only values; real secrets are injected at runtime.
       - run: bun run build
