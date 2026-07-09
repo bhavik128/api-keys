@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { requireSession } from "@/server/session";
 
 export default async function DashboardLayout({
@@ -15,6 +16,7 @@ export default async function DashboardLayout({
         <span className="font-semibold text-sm tracking-tight">API Keys</span>
         <div className="flex items-center gap-3">
           <span className="text-muted-foreground text-sm">{user.email}</span>
+          <ThemeToggle />
           <SignOutButton />
         </div>
       </header>

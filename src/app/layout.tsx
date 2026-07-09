@@ -22,6 +22,7 @@ export default function RootLayout({
     <html
       className={cn("h-full antialiased", "font-sans", inter.variable)}
       lang="en"
+      suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
         <Providers>{children}</Providers>
