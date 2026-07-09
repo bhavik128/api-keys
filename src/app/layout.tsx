@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
+import { Providers } from "@/app/providers";
 import { cn } from "@/lib/utils";
 import "@/app/globals.css";
 
@@ -22,7 +23,9 @@ export default function RootLayout({
       className={cn("h-full antialiased", "font-sans", inter.variable)}
       lang="en"
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
