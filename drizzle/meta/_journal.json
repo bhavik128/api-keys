@@ -8,6 +8,13 @@
       "when": 1783530037270,
       "tag": "0000_talented_fenris",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783571068450,
+      "tag": "0001_abnormal_kat_farrell",
+      "breakpoints": true
     }
   ]
 }
